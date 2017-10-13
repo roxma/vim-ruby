@@ -11,22 +11,22 @@
 
 " {{{ requirement checks
 
-function! s:ErrMsg(msg)
+function! rubycomplete#ErrMsg(msg)
     echohl ErrorMsg
     echo a:msg
     echohl None
 endfunction
 
 if !has('ruby')
-    call s:ErrMsg( "Error: Rubycomplete requires vim compiled with +ruby" )
-    call s:ErrMsg( "Error: falling back to syntax completion" )
+    call rubycomplete#ErrMsg( "Error: Rubycomplete requires vim compiled with +ruby" )
+    call rubycomplete#ErrMsg( "Error: falling back to syntax completion" )
     " lets fall back to syntax completion
     setlocal omnifunc=syntaxcomplete#Complete
     finish
 endif
 
 if version < 700
-    call s:ErrMsg( "Error: Required vim >= 7.0" )
+    call rubycomplete#ErrMsg( "Error: Required vim >= 7.0" )
     finish
 endif
 " }}} requirement checks
@@ -54,36 +54,36 @@ endif
 " }}} configuration failsafe initialization
 
 " {{{ vim-side support functions
-let s:rubycomplete_debug = 0
+let g:rubycomplete#debug = 0
 
-function! s:dprint(msg)
-    if s:rubycomplete_debug == 1
+function! rubycomplete#dprint(msg)
+    if g:rubycomplete#debug == 1
         echom a:msg
     endif
 endfunction
 
-function! s:GetBufferRubyModule(name, ...)
+function! rubycomplete#GetBufferRubyModule(name, ...)
     if a:0 == 1
-        let [snum,enum] = s:GetBufferRubyEntity(a:name, "module", a:1)
+        let [snum,enum] = rubycomplete#GetBufferRubyEntity(a:name, "module", a:1)
     else
-        let [snum,enum] = s:GetBufferRubyEntity(a:name, "module")
+        let [snum,enum] = rubycomplete#GetBufferRubyEntity(a:name, "module")
     endif
     return snum . '..' . enum
 endfunction
 
-function! s:GetBufferRubyClass(name, ...)
+function! rubycomplete#GetBufferRubyClass(name, ...)
     if a:0 >= 1
-        let [snum,enum] = s:GetBufferRubyEntity(a:name, "class", a:1)
+        let [snum,enum] = rubycomplete#GetBufferRubyEntity(a:name, "class", a:1)
     else
-        let [snum,enum] = s:GetBufferRubyEntity(a:name, "class")
+        let [snum,enum] = rubycomplete#GetBufferRubyEntity(a:name, "class")
     endif
     return snum . '..' . enum
 endfunction
 
-function! s:GetBufferRubySingletonMethods(name)
+function! rubycomplete#GetBufferRubySingletonMethods(name)
 endfunction
 
-function! s:GetBufferRubyEntity( name, type, ... )
+function! rubycomplete#GetBufferRubyEntity( name, type, ... )
     let lastpos = getpos(".")
     let lastline = lastpos
     if (a:0 >= 1)
@@ -113,12 +113,12 @@ function! s:GetBufferRubyEntity( name, type, ... )
     return [lnum,enum]
 endfunction
 
-function! s:IsInClassDef()
-    return s:IsPosInClassDef( line('.') )
+function! rubycomplete#IsInClassDef()
+    return rubycomplete#IsPosInClassDef( line('.') )
 endfunction
 
-function! s:IsPosInClassDef(pos)
-    let [snum,enum] = s:GetBufferRubyEntity( '.*', "class" )
+function! rubycomplete#IsPosInClassDef(pos)
+    let [snum,enum] = rubycomplete#GetBufferRubyEntity( '.*', "class" )
     let ret = 'nil'
 
     if snum < a:pos && a:pos < enum
@@ -128,7 +128,7 @@ function! s:IsPosInClassDef(pos)
     return ret
 endfunction
 
-function! s:GetRubyVarType(v)
+function! rubycomplete#GetRubyVarType(v)
     let stopline = 1
     let vtp = ''
     let pos = getpos('.')
@@ -142,7 +142,7 @@ function! s:GetRubyVarType(v)
     endif
     call setpos('.',pos)
     let ctors = '\(now\|new\|open\|get_instance'
-    if exists('g:rubycomplete_rails') && g:rubycomplete_rails == 1 && s:rubycomplete_rails_loaded == 1
+    if exists('g:rubycomplete_rails') && g:rubycomplete_rails == 1 && g:rubycomplete#rails_loaded == 1
         let ctors = ctors.'\|find\|create'
     else
     endif
@@ -214,7 +214,7 @@ endfunction
 "}}} vim-side completion function
 
 "{{{ ruby-side code
-function! s:DefRuby()
+function! rubycomplete#DefRuby()
 ruby << RUBYEOF
 # {{{ ruby completion
 
@@ -290,7 +290,7 @@ class VimRubyCompletion
 
   def load_buffer_class(name)
     dprint "load_buffer_class(%s) START" % name
-    classdef = get_buffer_entity(name, 's:GetBufferRubyClass("%s")')
+    classdef = get_buffer_entity(name, 'rubycomplete#GetBufferRubyClass("%s")')
     return if classdef == nil
 
     pare = /^\s*class\s*(.*)\s*<\s*(.*)\s*\n/.match( classdef )
@@ -302,20 +302,20 @@ class VimRubyCompletion
     begin
       eval classdef
     rescue Exception
-      VIM::evaluate( "s:ErrMsg( 'Problem loading class \"%s\", was it already completed?' )" % name )
+      VIM::evaluate( "rubycomplete#ErrMsg( 'Problem loading class \"%s\", was it already completed?' )" % name )
     end
     dprint "load_buffer_class(%s) END" % name
   end
 
   def load_buffer_module(name)
     dprint "load_buffer_module(%s) START" % name
-    classdef = get_buffer_entity(name, 's:GetBufferRubyModule("%s")')
+    classdef = get_buffer_entity(name, 'rubycomplete#GetBufferRubyModule("%s")')
     return if classdef == nil
 
     begin
       eval classdef
     rescue Exception
-      VIM::evaluate( "s:ErrMsg( 'Problem loading module \"%s\", was it already completed?' )" % name )
+      VIM::evaluate( "rubycomplete#ErrMsg( 'Problem loading module \"%s\", was it already completed?' )" % name )
     end
     dprint "load_buffer_module(%s) END" % name
   end
@@ -377,7 +377,7 @@ class VimRubyCompletion
     if /(\"|\')+/.match( receiver )
       "String"
     else
-      VIM::evaluate("s:GetRubyVarType('%s')" % receiver)
+      VIM::evaluate("rubycomplete#GetRubyVarType('%s')" % receiver)
     end
   end
 
@@ -403,7 +403,7 @@ class VimRubyCompletion
 
     rg.each do |x|
       if re.match( buf[x] )
-        next if type == "def" && eval( VIM::evaluate("s:IsPosInClassDef(%s)" % x) ) != nil
+        next if type == "def" && eval( VIM::evaluate("rubycomplete#IsPosInClassDef(%s)" % x) ) != nil
         ret.push $1
       end
     end
@@ -474,18 +474,18 @@ class VimRubyCompletion
           # assume 1.0
         end
         #eval( "Rails::Initializer.run" ) #not necessary?
-        VIM::command('let s:rubycomplete_rails_loaded = 1')
+        VIM::command('let g:rubycomplete#rails_loaded = 1')
         dprint "rails loaded"
       rescue Exception
         dprint "Rails Error %s" % $!
-        VIM::evaluate( "s:ErrMsg('Error loading rails environment')" )
+        VIM::evaluate( "rubycomplete#ErrMsg('Error loading rails environment')" )
       end
     end
   end
 
   def get_rails_helpers
     allow_rails = VIM::evaluate("exists('g:rubycomplete_rails') && g:rubycomplete_rails")
-    rails_loaded = VIM::evaluate('s:rubycomplete_rails_loaded')
+    rails_loaded = VIM::evaluate('g:rubycomplete#rails_loaded')
     return [] if allow_rails.to_i.zero? || rails_loaded.to_i.zero?
 
     buf_path = VIM::evaluate('expand("%:p")')
@@ -535,7 +535,7 @@ class VimRubyCompletion
 
   def add_rails_columns( cls )
     allow_rails = VIM::evaluate("exists('g:rubycomplete_rails') && g:rubycomplete_rails")
-    rails_loaded = VIM::evaluate('s:rubycomplete_rails_loaded')
+    rails_loaded = VIM::evaluate('g:rubycomplete#rails_loaded')
     return [] if allow_rails.to_i.zero? || rails_loaded.to_i.zero?
 
     begin
@@ -558,7 +558,7 @@ class VimRubyCompletion
 
   def get_rails_view_methods
     allow_rails = VIM::evaluate("exists('g:rubycomplete_rails') && g:rubycomplete_rails")
-    rails_loaded = VIM::evaluate('s:rubycomplete_rails_loaded')
+    rails_loaded = VIM::evaluate('g:rubycomplete#rails_loaded')
     return [] if allow_rails.to_i.zero? || rails_loaded.to_i.zero?
 
     buf_path = VIM::evaluate('expand("%:p")')
@@ -748,7 +748,7 @@ class VimRubyCompletion
 
     else
       dprint "default/other"
-      inclass = eval( VIM::evaluate("s:IsInClassDef()") )
+      inclass = eval( VIM::evaluate("rubycomplete#IsInClassDef()") )
 
       if inclass != nil
         dprint "inclass"
@@ -826,9 +826,9 @@ end # VimRubyCompletion
 RUBYEOF
 endfunction
 
-let s:rubycomplete_rails_loaded = 0
+let g:rubycomplete#rails_loaded = 0
 
-call s:DefRuby()
+call rubycomplete#DefRuby()
 "}}} ruby-side code
 
 
